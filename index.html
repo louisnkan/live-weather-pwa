@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="description" content="A beautiful live weather application powered by Open-Meteo.">
+
+  <title>Atmos — Live Weather</title>
+
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon.png">
+  <link rel="apple-touch-icon" href="./icon.png">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-x: hidden;
+      background: linear-gradient(
+        135deg,
+        #0f172a,
+        #312e81,
+        #581c87,
+        #172554
+      );
+      background-size: 300% 300%;
+      animation: gradient 12s ease infinite;
+    }
+
+    @keyframes gradient {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .weather-card {
+      width: 100%;
+      max-width: 390px;
+      padding: 35px 25px;
+      text-align: center;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.10);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .brand {
+      font-size: 13px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 30px;
+    }
+
+    .weather-icon {
+      font-size: 85px;
+      margin-bottom: 15px;
+      min-height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .temperature {
+      font-size: 76px;
+      font-weight: 300;
+      letter-spacing: -4px;
+      line-height: 1.1;
+    }
+
+    .description {
+      font-size: 18px;
+      margin-top: 12px;
+      opacity: 0.85;
+    }
+
+    .city {
+      font-size: 25px;
+      font-weight: 600;
+      margin-top: 28px;
+    }
+
+    .country {
+      font-size: 13px;
+      opacity: 0.65;
+      margin-top: 5px;
+    }
+
+    .weather-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .detail {
+      padding: 15px 8px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.09);
+    }
+
+    .detail span {
+      display: block;
+      font-size: 12px;
+      opacity: 0.65;
+      margin-bottom: 7px;
+    }
+
+    .detail strong {
+      font-size: 17px;
+    }
+
+    .refresh-btn {
+      width: 100%;
+      padding: 15px;
+      margin-top: 28px;
+      border: none;
+      border-radius: 15px;
+      background: white;
+      color: #1e1b4b;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.25s;
+    }
+
+    .refresh-btn:active {
+      transform: scale(0.96);
+    }
+
+    .refresh-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      font-size: 13px;
+      margin-top: 18px;
+      opacity: 0.7;
+      min-height: 20px;
+    }
+
+    .footer {
+      font-size: 10px;
+      opacity: 0.45;
+      margin-top: 20px;
+    }
+
+    .install-btn {
+      display: none;
+      margin-top: 12px;
+      padding: 12px;
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="weather-card">
+
+    <div class="brand">ATMOS WEATHER</div>
+
+    <div class="weather-icon" id="weatherIcon">🌍</div>
+
+    <div class="temperature" id="temperature">--°</div>
+
+    <div class="description" id="description">
+      Waiting for weather data
+    </div>
+
+    <div class="city" id="city">Your Location</div>
+
+    <div class="country" id="country">
+      Location not detected
+    </div>
+
+    <div class="weather-details">
+
+      <div class="detail">
+        <span>FEELS LIKE</span>
+        <strong id="feelsLike">--°C</strong>
+      </div>
+
+      <div class="detail">
+        <span>WIND SPEED</span>
+        <strong id="windSpeed">-- km/h</strong>
+      </div>
+
+      <div class="detail">
+        <span>HUMIDITY</span>
+        <strong id="humidity">--%</strong>
+      </div>
+
+      <div class="detail">
+        <span>CONDITION</span>
+        <strong id="condition">--</strong>
+      </div>
+
+    </div>
+
+    <button class="refresh-btn" id="refreshBtn">
+      ↻ Refresh Weather
+    </button>
+
+    <button class="install-btn" id="installBtn">
+      ↓ Install Atmos App
+    </button>
+
+    <div class="status" id="status">
+      Getting your location...
+    </div>
+
+    <div class="footer">
+      WEATHER DATA BY OPEN-METEO · MAP DATA BY OPENSTREETMAP
+    </div>
+
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    const weatherCodes = {
+      0: ["Clear Sky", "☀️"],
+      1: ["Mainly Clear", "🌤️"],
+      2: ["Partly Cloudy", "⛅"],
+      3: ["Overcast", "☁️"],
+      45: ["Foggy", "🌫️"],
+      48: ["Rime Fog", "🌫️"],
+      51: ["Light Drizzle", "🌦️"],
+      53: ["Moderate Drizzle", "🌦️"],
+      55: ["Dense Drizzle", "🌧️"],
+      56: ["Freezing Drizzle", "🌧️"],
+      57: ["Heavy Freezing Drizzle", "🌧️"],
+      61: ["Slight Rain", "🌧️"],
+      63: ["Moderate Rain", "🌧️"],
+      65: ["Heavy Rain", "⛈️"],
+      66: ["Freezing Rain", "🌧️"],
+      67: ["Heavy Freezing Rain", "🌧️"],
+      71: ["Slight Snow", "🌨️"],
+      73: ["Moderate Snow", "❄️"],
+      75: ["Heavy Snow", "❄️"],
+      77: ["Snow Grains", "🌨️"],
+      80: ["Rain Showers", "🌦️"],
+      81: ["Moderate Showers", "🌧️"],
+      82: ["Violent Showers", "⛈️"],
+      85: ["Snow Showers", "🌨️"],
+      86: ["Heavy Snow Showers", "❄️"],
+      95: ["Thunderstorm", "⛈️"],
+      96: ["Thunderstorm with Hail", "⛈️"],
+      99: ["Severe Thunderstorm", "⛈️"]
+    };
+
+    function updateStatus(message) {
+      $("status").textContent = message;
+    }
+
+    function setLoading(loading) {
+      $("refreshBtn").disabled = loading;
+      $("refreshBtn").textContent = loading
+        ? "Loading..."
+        : "↻ Refresh Weather";
+    }
+
+    async function getWeather() {
+      if (!navigator.geolocation) {
+        updateStatus("Your browser does not support geolocation.");
+        return;
+      }
+
+      setLoading(true);
+      updateStatus("Requesting your location...");
+
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            resolve,
+            reject,
+            {
+              enableHighAccuracy: false,
+              timeout: 15000,
+              maximumAge: 300000
+            }
+          );
+        });
+
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        updateStatus("Fetching live weather...");
+
+        const weatherURL =
+          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m&timezone=auto`;
+
+        const [weatherResponse, locationResponse] =
+          await Promise.all([
+            fetch(weatherURL),
+            fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
+              {
+                headers: {
+                  "Accept": "application/json"
+                }
+              }
+            )
+          ]);
+
+        if (!weatherResponse.ok) {
+          throw new Error("Unable to retrieve weather data.");
+        }
+
+        const weather = await weatherResponse.json();
+
+        let location = {};
+
+        if (locationResponse.ok) {
+          location = await locationResponse.json();
+        }
+
+        const current = weather.current;
+
+        const code = current.weather_code;
+
+        const condition = weatherCodes[code] ||
+          ["Unknown Condition", "🌍"];
+
+        const address = location.address || {};
+
+        const cityName =
+          address.city ||
+          address.town ||
+          address.village ||
+          address.municipality ||
+          address.county ||
+          address.state ||
+          "Unknown Location";
+
+        const countryName = address.country || "";
+
+        $("temperature").textContent =
+          `${Math.round(current.temperature_2m)}°`;
+
+        $("description").textContent = condition[0];
+
+        $("weatherIcon").textContent = condition[1];
+
+        $("city").textContent = cityName;
+
+        $("country").textContent = countryName;
+
+        $("feelsLike").textContent =
+          `${Math.round(current.apparent_temperature)}°C`;
+
+        $("windSpeed").textContent =
+          `${Math.round(current.wind_speed_10m)} km/h`;
+
+        $("humidity").textContent =
+          `${current.relative_humidity_2m}%`;
+
+        $("condition").textContent = condition[0];
+
+        updateStatus(
+          `Last updated: ${new Date().toLocaleTimeString()}`
+        );
+
+      } catch (error) {
+
+        console.error(error);
+
+        if (error.code === 1) {
+          updateStatus("Location permission denied. Please enable location access.");
+        } else if (error.code === 2) {
+          updateStatus("Your location is currently unavailable.");
+        } else if (error.code === 3) {
+          updateStatus("Location request timed out. Try again.");
+        } else {
+          updateStatus(
+            error.message || "Something went wrong. Please try again."
+          );
+        }
+
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    $("refreshBtn").addEventListener("click", getWeather);
+
+    // PWA SERVICE WORKER REGISTRATION
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", async () => {
+        try {
+          await navigator.serviceWorker.register("./sw.js");
+          console.log("Service Worker registered successfully.");
+        } catch (error) {
+          console.error("Service Worker registration failed:", error);
+        }
+      });
+    }
+
+    // PWA INSTALLATION
+    let deferredPrompt;
+
+    window.addEventListener("beforeinstallprompt", event => {
+      event.preventDefault();
+      deferredPrompt = event;
+      $("installBtn").style.display = "block";
+    });
+
+    $("installBtn").addEventListener("click", async () => {
+      if (!deferredPrompt) return;
+
+      deferredPrompt.prompt();
+
+      await deferredPrompt.userChoice;
+
+      deferredPrompt = null;
+
+      $("installBtn").style.display = "none";
+    });
+
+    window.addEventListener("appinstalled", () => {
+      $("installBtn").style.display = "none";
+      updateStatus("Atmos successfully installed!");
+    });
+
+    // INITIAL WEATHER REQUEST
+    getWeather();
+  </script>
+
+</body>
+</html>
